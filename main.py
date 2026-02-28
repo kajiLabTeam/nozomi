@@ -1,7 +1,7 @@
 from rikka.main import printname
 
 
-def main():
+def main() -> None:
     print("Hello from nozomi!")
     print(printname("rikka"))
 
