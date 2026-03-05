@@ -1,10 +1,16 @@
+from typing import cast
+
+from fastapi import FastAPI
 from rikka.main import printname
 
-
-def main() -> None:
-    print("Hello from nozomi!")
-    print(printname("rikka"))
+app = FastAPI()
 
 
-if __name__ == "__main__":
-    main()
+@app.get("/")
+def read_root() -> dict[str, str]:
+    return {"Hello": "World"}
+
+
+@app.get("/rikka")
+def read_rikka(q: str = "World") -> str:
+    return cast(str, printname(q))

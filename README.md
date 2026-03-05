@@ -10,12 +10,21 @@ python versionは`3.14`
 $ uv run main.py
 ```
 
+python fastapiの実行
+```sh
+$ uv run fastapi dev main.py
+```
+
 ### uvのセットアップ
 
 `uv venv`
 `. .venv/bin/activate`
 `uv sync`
 `uv run main.py`
+
+### uvでパッケージの追加
+
+`uv add hoge`
 
 # コミット前に以下のコマンドをする
 ## フォーマッター
