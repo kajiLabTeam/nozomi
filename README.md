@@ -21,8 +21,10 @@ Asset slots are explicit contracts: the initial PDR definition uses Okarin's
 `acce.v1` and `gyro.v1` assets (data types `acce` and `gyro`, schema version
 `1`, CSV format). BLE follows the DesignDoc contract (`ble`, schema version
 `1`, CSV), but is not yet implemented in the Okarin catalog. Pipeline
-components have instance IDs and explicit linear bindings; BLE variants include
-an explicit `ble-fusion` component.
+components have instance IDs and explicit linear bindings; resource slots
+`resource.floor_map` (PNG/SVG) and `resource.beacon_layout` (JSON) are future
+contracts only. They are not vendor files and keep these pipelines unavailable
+until Okarin publishes the corresponding catalog contracts.
 
 This boundary enables staged adoption without changing Rikka: capabilities can
 be added to the adapter as Rikka evolves, while future pipeline definitions can
