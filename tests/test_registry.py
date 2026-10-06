@@ -8,7 +8,14 @@ from pydantic import ValidationError
 
 from main import app
 from nozomi.adapter import RikkaAdapter
-from nozomi.catalog import ACCE, GYRO, initial_catalog
+from nozomi.catalog import (
+    ACCE,
+    BEACON_LAYOUT,
+    FLOOR_MAP_PNG,
+    FLOOR_MAP_SVG,
+    GYRO,
+    initial_catalog,
+)
 from nozomi.models import (
     AssetContract,
     ComponentContract,
@@ -28,6 +35,34 @@ def test_catalog_has_four_linear_definitions_and_specific_pdr_slots() -> None:
     assert catalog[0].input_slots[0].accepted_contracts == (ACCE,)
     assert catalog[0].input_slots[1].accepted_contracts == (GYRO,)
     assert any(c.component_id == "ble-fusion" for c in catalog[2].components)
+
+
+def test_each_pipeline_external_slots_and_accepted_contracts_are_fixed() -> None:
+    catalog = initial_catalog()
+    assert [s.slot_id for s in catalog[0].input_slots] == ["acce", "gyro"]
+    assert [s.slot_id for s in catalog[1].input_slots] == ["acce", "gyro", "floor_map"]
+    assert [s.slot_id for s in catalog[2].input_slots] == [
+        "acce",
+        "gyro",
+        "ble",
+        "floor_map",
+        "beacon_layout",
+    ]
+    assert [s.slot_id for s in catalog[3].input_slots] == [
+        "acce",
+        "gyro",
+        "ble",
+        "floor_map",
+        "beacon_layout",
+    ]
+    assert catalog[1].input_slots[2].accepted_contracts == (
+        FLOOR_MAP_PNG,
+        FLOOR_MAP_SVG,
+    )
+    assert catalog[2].input_slots[-1].accepted_contracts == (BEACON_LAYOUT,)
+    assert catalog[3].input_slots[2].accepted_contracts == (
+        catalog[2].input_slots[2].accepted_contracts[0],
+    )
 
 
 @pytest.mark.parametrize(
@@ -107,6 +142,15 @@ def test_digest_fixed_and_order_independent() -> None:
     )
 
 
+def test_resource_pipeline_digests_are_fixed() -> None:
+    assert [canonical_digest(definition) for definition in initial_catalog()] == [
+        "4ef35b55455927e335bd4277c9bca5c6df9151cedbe97fb41fbe7673b7353bb5",
+        "a99f539ae6fe8ae311fdb4685f4e412aee955f464c5b702bdbab54af1a5dbc22",
+        "5914c6f3c48f1217516d53f25011f07b3fd67fa67f64d141ea39d654aa106c1c",
+        "2131c884f83f508168b85daab0410712819f247f38eaee468b27edc1b2842e38",
+    ]
+
+
 def test_registry_detects_binding_type_mismatch_and_duplicate_active() -> None:
     definition = initial_catalog()[0]
     bad = definition.model_copy(update={"bindings": ()})
@@ -135,16 +179,19 @@ def test_binding_rejects_unknown_target_and_backward_source() -> None:
     )
     with pytest.raises(ValueError, match="bindings must match"):
         PipelineRegistry((unknown,), RikkaAdapter())
-    backward = initial_catalog()[1].model_copy(
+    definition = initial_catalog()[1]
+    backward = definition.model_copy(
         update={
-            "bindings": (
+            "bindings": tuple(
                 SlotBinding(
                     target_component_instance="pf-1",
                     target_slot_id="pose",
                     source_component_instance="pf-1",
                     source_slot_id="particle",
-                ),
-                *initial_catalog()[1].bindings[:2],
+                )
+                if (b.target_component_instance, b.target_slot_id) == ("pf-1", "pose")
+                else b
+                for b in definition.bindings
             )
         }
     )
@@ -157,8 +204,13 @@ def test_binding_rejects_actual_source_target_contract_mismatch() -> None:
     mismatch = definition.model_copy(
         update={
             "bindings": (
-                *definition.bindings[:2],
-                definition.bindings[2].model_copy(update={"source_slot_id": "gyro"}),
+                *(
+                    b.model_copy(update={"source_slot_id": "gyro"})
+                    if (b.target_component_instance, b.target_slot_id)
+                    == ("pf-1", "pose")
+                    else b
+                    for b in definition.bindings
+                ),
             )
         }
     )
@@ -174,8 +226,10 @@ def test_output_ids_and_fourth_pipeline_wiring() -> None:
         ("pdr-1", "acce"),
         ("pdr-1", "gyro"),
         ("pf-1", "pose"),
+        ("pf-1", "floor_map"),
         ("ble-fusion-1", "particle"),
         ("ble-fusion-1", "ble"),
+        ("ble-fusion-1", "beacon_layout"),
     ]
     duplicate = definition.model_copy(
         update={
