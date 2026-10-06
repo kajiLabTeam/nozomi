@@ -10,6 +10,13 @@ dependencies = [
     "rikka",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nozomi"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.15",
@@ -60,3 +67,6 @@ plugins = [
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+pythonpath = [".", "src"]
